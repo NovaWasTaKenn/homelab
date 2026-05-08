@@ -1,0 +1,33 @@
+#cloud-config
+hostname: ${vm_hostname}
+local-hostname: ${vm_hostname}
+fqdn: ${vm_hostname}.${domain}
+manage_etc_hosts: true
+package_upgrade: true
+users:
+  - default
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${trimspace(ssh_public_key)}
+ssh_pwauth: True ## This line enables ssh password authentication
+
+# Paquets à installer
+# packages:
+#   - htop
+#
+# # Fichiers à créer
+# write_files:
+#   - path: /etc/motd
+#     content: |
+#       Bienvenue sur ce serveur configuré par cloud-init!
+#     permissions: '0644'
+
+# Commandes à exécuter (stage Final)
+#runcmd:
+#  - systemctl enable nginx
+#  - systemctl start nginx
+#
+#
+#
+

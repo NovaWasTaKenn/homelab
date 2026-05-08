@@ -1,0 +1,14 @@
+plugin: community.proxmox.proxmox
+url: https://192.168.1.202:8006
+validate_certs: false
+user: 'terraform-prov@pve'
+token_id: 'terraform'
+want_proxmox_nodes_ansible_host: true
+want_facts: true
+compose:
+  ansible_host: proxmox_agent_interfaces[1]["ip-addresses"][0].split('/')[0]
+keyed_groups:
+  - key: proxmox_tags_parsed
+    separator: ""
+groups:
+  ubuntu_servers: "'ubuntu' in (proxmox_tags_parsed|list)"
