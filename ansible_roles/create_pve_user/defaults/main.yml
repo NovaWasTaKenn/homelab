@@ -1,0 +1,11 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ansible_roles/create_pve_user
+api_host: ""
+user_state: present
+role_state: present
+playbook_user: ""
+playbook_password: ""
+pve_user: ""
+pve_role: ""
+pve_privileges: []

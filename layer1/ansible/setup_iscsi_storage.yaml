@@ -1,0 +1,91 @@
+---
+# Run this after the iSCSI target container is provisioned and tgt is configured.
+# Only needs to run on one node — Proxmox cluster syncs storage config cluster-wide.
+
+- name: Setup iSCSI and LVM storage in Proxmox
+  hosts: proxmox
+  gather_facts: false
+  run_once: true   # cluster-wide storage config, one node is enough
+
+  vars_prompt:
+    - name: root_password
+      prompt: "Proxmox root password"
+      private: true
+
+  vars:
+    pve_api_base: "https://{{ ansible_host }}:8006/api2/json"
+
+  tasks:
+    - name: Get auth ticket
+      uri:
+        url: "{{ pve_api_base }}/access/ticket"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          username: root@pam
+          password: "{{ root_password }}"
+        validate_certs: false
+      register: auth
+      no_log: true
+
+    - name: Set auth facts
+      set_fact:
+        pve_ticket: "{{ auth.json.data.ticket }}"
+        pve_csrf: "{{ auth.json.data.CSRFPreventionToken }}"
+      no_log: true
+
+    - name: Check if iSCSI storage already exists
+      uri:
+        url: "{{ pve_api_base }}/storage/iscsi-templates"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+        validate_certs: false
+        status_code: [200, 500]
+      register: iscsi_check
+
+    - name: Add iSCSI storage
+      uri:
+        url: "{{ pve_api_base }}/storage"
+        method: POST
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+          CSRFPreventionToken: "{{ pve_csrf }}"
+        body_format: form-urlencoded
+        body:
+          storage: iscsi-templates
+          type: iscsi
+          portal: "{{ iscsi_portal }}"
+          target: "{{ iscsi_iqn }}"
+          shared: 1
+        validate_certs: false
+        status_code: 200
+      when: iscsi_check.status == 500
+
+    - name: Check if LVM storage already exists
+      uri:
+        url: "{{ pve_api_base }}/storage/lvm-templates"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+        validate_certs: false
+        status_code: [200, 500]
+      register: lvm_check
+
+    - name: Add LVM storage over iSCSI
+      uri:
+        url: "{{ pve_api_base }}/storage"
+        method: POST
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+          CSRFPreventionToken: "{{ pve_csrf }}"
+        body_format: form-urlencoded
+        body:
+          storage: lvm-templates
+          type: lvm
+          base: iscsi-templates
+          shared: 1
+          content: images,rootdir
+        validate_certs: false
+        status_code: 200
+      when: lvm_check.status == 500

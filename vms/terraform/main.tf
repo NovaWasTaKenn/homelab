@@ -21,16 +21,32 @@ data "local_file" "ssh_public_key" {
   filename = var.ssh_pkey_path
 }
 
-data "proxmox_virtual_environment_vms" "template" {
-  node_name = "node1"
-  tags      = ["template", var.template_tag]
+
+
+module "opnsense-vm" {
+  source = "~/Repos/homelab/terraform_modules/opnsense-vm"
+  template_vm_id     = 9997              # your template VM ID
+  target_node        = "node1"
+  onboot             = true
+  target_node_domain = "pve.local"
+  vm_hostname        = "opnsense"
+  domain             = "pve.local"
+  vm_tags            = ["opnsense", "networking"]
+  sockets            = 1
+  cores              = 2
+  memory             = 4096
+  vm_user            = "root"            # OPNsense uses root
+  ssh_public_key     = data.local_file.ssh_public_key.content
+  disk = {
+    storage = "local-lvm"
+    size    = 20
+  }
 }
 
-
 module "vm1" {
-  source = "./basic-ubuntu-vm"
+  source = "~/Repos/homelab/terraform_modules/template-vm"
   ssh_public_key = data.local_file.ssh_public_key.content
-  template_vm_id = data.proxmox_virtual_environment_vms.template.vms[0].vm_id
+  template_vm_id = 9999
   target_node = "node1"
   onboot = true
   target_node_domain = "pve.local"
@@ -42,30 +58,34 @@ module "vm1" {
   memory =  2048
   vm_user = "sysadmin"
   disk = {
-    storage = "local_lvm"
+    storage = "local-lvm"
     size = 10
   }
 }
 
-module "vm2" {
-  source = "./basic-ubuntu-vm"
+# module "vm2" {
+#   source = "~/Repos/homelab/terraform_modules/template-vm"
+#
+#
+#   ssh_public_key = data.local_file.ssh_public_key.content
+#   template_vm_id = 9998
+#   target_node = "node2"
+#   onboot = true
+#   target_node_domain = "pve.local"
+#   vm_hostname = "vm2"
+#   domain = "pve.local"
+#   vm_tags = ["ubuntu", "basic_vm"]
+#   sockets = 1
+#   cores = 1
+#   memory =  2048
+#   vm_user = "sysadmin"
+#   disk = {
+#     storage = "local-lvm"
+#     size = 10
+#   }
+#
+#
+# }
 
-  ssh_public_key = data.local_file.ssh_public_key.content
-  template_vm_id = data.proxmox_virtual_environment_vms.template.vms[0].vm_id
-  target_node = "node2"
-  onboot = true
-  target_node_domain = "pve.local"
-  vm_hostname = "vm2"
-  domain = "pve.local"
-  vm_tags = ["ubuntu", "basic_vm"]
-  sockets = 1
-  cores = 1
-  memory =  2048
-  vm_user = "sysadmin"
-  disk = {
-    storage = "local_lvm"
-    size = 10
-  }
 
 
-}

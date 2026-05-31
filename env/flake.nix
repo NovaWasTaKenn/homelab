@@ -7,6 +7,10 @@
       url = "github:NovaWasTakenn/nvimConfigs/main";
       inputs.nixpkgs.follows = "nixpkgs"; # Suis le nixpkgs défini précédemment ou alors nixpkgs alias nix unstable ????
     };
+    molecule-proxmox = {
+      url = "github:NovaWasTakenn/molecule-proxmox/main";
+      inputs.nixpkgs.follows = "nixpkgs"; # Suis le nixpkgs défini précédemment ou alors nixpkgs alias nix unstable ????
+    };
   };
 
   outputs = inputs @ {...}: let
@@ -32,9 +36,17 @@
         terraform
         ansible
         cloud-init
+        python312
+        python312Packages.proxmoxer
+        molecule
+        inputs.molecule-proxmox.packages.${system}.molecule-proxmox
       ];
 
-      shellHook = "echo 'Welcome to a python dev env'";
+      shellHook = ''
+        echo 'Welcome'
+        alias tf="terraform"
+        export  TEST_NXI_SHELL="TEST"
+      '';
       #ENV_VAR = "";
     };
   };

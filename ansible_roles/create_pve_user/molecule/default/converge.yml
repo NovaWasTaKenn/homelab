@@ -1,0 +1,22 @@
+---
+- name: Converge
+  hosts: localhost
+  gather_facts: false
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ proxmox_host }}"
+      api_user: root@pam
+      api_password: "{{ root_password }}"
+      validate_certs: false
+  tasks:
+    - name: Include setup-terraform-prov role
+      ansible.builtin.include_role:
+        name: create_pve_user
+
+# - name: Converge — verify SSH reachability
+#   hosts: all
+#   gather_facts: false
+#   tasks:
+#     - name: Ping instance
+#       ansible.builtin.ping:
+

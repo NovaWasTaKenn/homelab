@@ -7,34 +7,16 @@ terraform {
   }
 }
 
-resource "proxmox_virtual_environment_file" "cloud_user_config" {
-  content_type = "snippets"
-  datastore_id = "local"
-  node_name    = var.target_node
-
-  source_raw {
-    data = templatefile("../cloud-init/user_data.yaml", 
-  {
-        vm_hostname     = var.vm_hostname
-        domain = var.domain
-        ssh_public_key = var.ssh_public_key
-      }
-)
-
-    file_name = "${var.vm_hostname}.${var.domain}-ci-user.yml"
-  }
-}
-
-resource "proxmox_virtual_environment_file" "cloud_meta_config" {
-  content_type = "snippets"
-  datastore_id = "local"
-  node_name    = var.target_node
-
-  source_raw {
-    data = file("../cloud-init/meta_data.yaml")
-
-    file_name = "${var.vm_hostname}.${var.domain}-ci-meta_data.yml"
-  }
+resource "proxmox_download_file" "vm-image" {
+  content_type       = "iso"
+  datastore_id       = "local"
+  file_name          = "vm-image.iso"
+  node_name          = var.target_node
+  url                = var.download_url
+  checksum           = var.checksum
+  checksum_algorithm = "sha256"
+  decompression_algorithm = "bz2"
+  overwrite = false
 }
 
 resource "proxmox_virtual_environment_vm" "vm" {
@@ -42,10 +24,12 @@ resource "proxmox_virtual_environment_vm" "vm" {
   node_name = var.target_node
 
   on_boot = var.onboot
-
+  timeout_create = 120
+  started        = true
+  reboot         = false
 
   agent {
-    enabled = true
+    enabled = false
   }
 
   tags = var.vm_tags
@@ -62,8 +46,9 @@ resource "proxmox_virtual_environment_vm" "vm" {
   }
 
   network_device {
-    bridge  = "vmbr0"
+    bridge  = "vnetall"
     model   = "virtio"
+    vlan_id = 100
   }
 
   # Ignore changes to the network
@@ -81,6 +66,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
   disk {
     interface    = "scsi0"
     iothread     = true
+    file_id   = proxmox_download_file.vm-image.id
     datastore_id = "${var.disk.storage}"
     size         = var.disk.size
     discard      = "ignore"
@@ -98,9 +84,6 @@ resource "proxmox_virtual_environment_vm" "vm" {
     }
   }
 
-  clone {
-    vm_id = var.template_vm_id
-  }
 
   initialization {
     # ip_config {
@@ -111,8 +94,6 @@ resource "proxmox_virtual_environment_vm" "vm" {
 
     datastore_id         = "local-lvm"
     interface            = "ide2"
-    user_data_file_id    = proxmox_virtual_environment_file.cloud_user_config.id
-    meta_data_file_id    = proxmox_virtual_environment_file.cloud_meta_config.id
   }
 
 

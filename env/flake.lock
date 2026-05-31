@@ -51,6 +51,27 @@
         "type": "github"
       }
     },
+    "molecule-proxmox": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1779699503,
+        "narHash": "sha256-R493ztHHNlhBDNPmv7KTgCmlj3MTJTcFnvd8mbC0ZXc=",
+        "owner": "NovaWasTakenn",
+        "repo": "molecule-proxmox",
+        "rev": "6b6f0d0c311f920f8c48d4c2d6ae242ad23d7c54",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NovaWasTakenn",
+        "ref": "main",
+        "repo": "molecule-proxmox",
+        "type": "github"
+      }
+    },
     "nil": {
       "inputs": {
         "flake-utils": [
@@ -160,6 +181,7 @@
     },
     "root": {
       "inputs": {
+        "molecule-proxmox": "molecule-proxmox",
         "nixpkgs": "nixpkgs",
         "nvimConfigs": "nvimConfigs"
       }

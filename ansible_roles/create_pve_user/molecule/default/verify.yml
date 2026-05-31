@@ -1,0 +1,134 @@
+---
+- name: Verify terraform provisioner user setup
+  hosts: proxmox
+  gather_facts: false
+
+  vars:
+    pve_api_base: "https://{{ ansible_host }}:8006/api2/json"
+
+  tasks:
+    # ── Auth ticket ───────────────────────────────────────────────────────────
+    - name: Get Proxmox auth ticket and CSRF token
+      uri:
+        url: "{{ pve_api_base }}/access/ticket"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          username: "{{ playbook_user }}"
+          password: "{{ playbook_password }}"
+        validate_certs: false
+        status_code: 200
+      register: auth
+      no_log: true
+
+    - name: Set auth facts
+      set_fact:
+        pve_ticket: "{{ auth.json.data.ticket }}"
+        pve_csrf: "{{ auth.json.data.CSRFPreventionToken }}"
+      no_log: true
+
+    # ── Role ──────────────────────────────────────────────────────────────────
+    - name: Get role info via API
+      uri:
+        url: "{{ pve_api_base }}/access/roles/{{ pve_role }}"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+        validate_certs: false
+        status_code: [200, 500]
+      register: role_info
+
+    - name: Assert role exists
+      ansible.builtin.assert:
+        that:
+          - role_info.status == 200
+        fail_msg: "Role {{ pve_role }} does not exist"
+
+    - name: Assert role has all required privileges
+      ansible.builtin.assert:
+        that:
+          - item in (role_info.json.data | dict2items | map(attribute='key') | list)
+        fail_msg: "Privilege {{ item }} is missing from role {{ pve_role }}"
+      loop: "{{ pve_privileges }}"
+
+    # ── User ──────────────────────────────────────────────────────────────────
+    - name: Get user info
+      community.proxmox.proxmox_user_info:
+        api_host: "{{ ansible_host }}"
+        api_user: "{{ playbook_user }}"
+        api_password: "{{ playbook_password }}"
+        validate_certs: false
+        userid: "{{ pve_user }}"
+      register: user_info
+      no_log: true
+
+    - name: Assert user exists and is unique
+      ansible.builtin.assert:
+        that:
+          - user_info.proxmox_users is defined
+          - user_info.proxmox_users | length == 1
+        fail_msg: "User {{ pve_user }} not found or duplicated"
+
+    - name: Assert user is enabled
+      ansible.builtin.assert:
+        that:
+          - user_info.proxmox_users[0].enable == 1
+        fail_msg: "User {{ pve_user }} exists but is disabled"
+
+    # ── ACL ───────────────────────────────────────────────────────────────────
+    - name: Get ACLs via API
+      uri:
+        url: "{{ pve_api_base }}/access/acl"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+        validate_certs: false
+        status_code: 200
+      register: acl_list
+
+    - name: Find ACL entry for terraform-prov on path /
+      set_fact:
+        matching_acl: >-
+          {{ acl_list.json.data | selectattr('path', 'equalto', '/')
+                                | selectattr('ugid', 'equalto', pve_user)
+                                | selectattr('roleid', 'equalto', pve_role)
+                                | selectattr('type', 'equalto', 'user')
+                                | list }}
+
+    - name: Assert ACL exists on path / with correct role
+      ansible.builtin.assert:
+        that:
+          - matching_acl | length == 1
+        fail_msg: >-
+          No ACL found for user {{ pve_user }} with role {{ pve_role }} on path /.
+          Found ACLs: {{ acl_list.json.data | selectattr('ugid', 'equalto', pve_user) | list }}
+
+    - name: Assert ACL has propagation enabled
+      ansible.builtin.assert:
+        that:
+          - matching_acl[0].propagate == 1
+        fail_msg: "ACL for {{ pve_user }} on / exists but propagation is not enabled"
+
+    # ── API Token ─────────────────────────────────────────────────────────────
+    - name: Check if API token exists
+      uri:
+        url: "{{ pve_api_base }}/access/users/{{ pve_user | urlencode }}/token/terraform"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ pve_ticket }}"
+        validate_certs: false
+        status_code: [200, 500]
+      register: token_check
+      no_log: true
+
+    - name: Assert token exists
+      ansible.builtin.assert:
+        that:
+          - token_check.status == 200
+        fail_msg: "API token 'terraform' does not exist for user {{ pve_user }}"
+
+    - name: Assert token has privsep disabled
+      ansible.builtin.assert:
+        that:
+          - token_check.json.data.privsep == 0
+        fail_msg: "Token exists but privsep is enabled — token will not inherit user privileges"
