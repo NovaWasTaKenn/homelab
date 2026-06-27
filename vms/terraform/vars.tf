@@ -12,3 +12,8 @@ variable "ssh_pkey_path" {
   description = "Path to the ssh public key"
   type = string
 }
+
+variable "tf_modules_path" {
+  description = "Path to the ssh public key"
+  type = string
+}

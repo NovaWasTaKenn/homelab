@@ -3,6 +3,26 @@ all:
     proxmox:
       hosts:
         node1:
-          ansible_host: node1.pve.local
+          ansible_host: 192.168.1.201
+        node2:
+          ansible_host: 192.168.1.202
       vars:
-        ansible_python_interpreter: /nix/store/f2krmq3iv5nibcvn4rw7nrnrciqprdkh-python3-3.12.9/bin/python3
+        ansible_python_interpreter: /usr/bin/python3
+        ansible_user: root
+        root_user: root
+        ansible_ssh_private_key_file: /home/quentin/.ssh/id_ed25519
+        ansible_ssh_extra_args: "-o StrictHostKeyChecking=no"
+
+    proxmox_bootstrap:
+      hosts:
+        node1:
+          ansible_host: 192.168.1.201
+        node2:
+          ansible_host: 192.168.1.202
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+        ansible_user: root
+        root_user: root
+        ansible_ssh_private_key_file: /home/quentin/.ssh/id_ed25519
+        ansible_ssh_extra_args: "-o StrictHostKeyChecking=no"
+        ansible_password: "{{ proxmox_root_password }}"

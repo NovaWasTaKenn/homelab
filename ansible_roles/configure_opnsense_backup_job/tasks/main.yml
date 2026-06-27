@@ -1,0 +1,112 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ./configure_opnsense_backup_job
+#
+---
+# Configures the OPNsense backup LXC container after Terraform provisions it.
+#
+# Run with:
+# ansible-playbook setup-opnsense-backup.yml -i inventory.yml -e @vault-opnsense.yml --ask-vault-pass
+
+
+# ── Dependencies ──────────────────────────────────────────────────────────
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+    state: present
+    update_cache: true
+
+# ── Backup script ─────────────────────────────────────────────────────────
+- name: Deploy backup script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../files/backup.sh"
+    dest: "{{ backup_script_dest }}"
+    owner: root
+    group: root
+    mode: '0755'
+
+# ── Environment file ──────────────────────────────────────────────────────
+- name: Deploy environment file
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../files/opnsense-backup.env.tpl"
+    dest: "{{ backup_env_dest }}"
+    owner: root
+    group: root
+    mode: '0600'
+  vars:
+    opnsense_host: "{{ opnsense_host }}"
+    opnsense_api_key: "{{ opnsense_api_key }}"
+    opnsense_api_secret: "{{ opnsense_api_secret }}"
+    git_remote: "{{ git_remote }}"
+  no_log: true
+
+# ── SSH deploy key ────────────────────────────────────────────────────────
+- name: Ensure /root/.ssh exists
+  ansible.builtin.file:
+    path: /root/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Deploy git SSH key
+  ansible.builtin.copy:
+    content: "{{ git_deploy_key }}"
+    dest: "{{ deploy_key_dest }}"
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+
+- name: Configure SSH to use deploy key for git host
+  ansible.builtin.blockinfile:
+    path: /root/.ssh/config
+    create: true
+    owner: root
+    group: root
+    mode: '0600'
+    marker: "# {mark} opnsense-backup git deploy key"
+    block: |
+      Host github.com
+        IdentityFile {{ deploy_key_dest }}
+        StrictHostKeyChecking accept-new
+
+# ── Backup repo ───────────────────────────────────────────────────────────
+- name: Ensure backup directory exists
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+# ── Cron job ──────────────────────────────────────────────────────────────
+- name: Create cron log file
+  ansible.builtin.file:
+    path: "{{ cron_log }}"
+    state: touch
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Register daily backup cron job
+  ansible.builtin.cron:
+    name: opnsense-backup
+    user: root
+    hour: "3"
+    minute: "0"
+    job: "{{ backup_script_dest }} >> {{ cron_log }} 2>&1"
+    state: present
+
+# ── Verify ────────────────────────────────────────────────────────────────
+- name: Run backup once to verify setup
+  ansible.builtin.command:
+    cmd: "{{ backup_script_dest }}"
+  changed_when: false
+  register: backup_verify
+
+- name: Show backup output
+  ansible.builtin.debug:
+    msg: "{{ backup_verify.stdout_lines }}"

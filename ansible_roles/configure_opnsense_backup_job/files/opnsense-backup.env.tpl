@@ -1,0 +1,5 @@
+OPNSENSE_HOST="${opnsense_host}"
+OPNSENSE_API_KEY="${opnsense_api_key}"
+OPNSENSE_API_SECRET="${opnsense_api_secret}"
+GIT_REMOTE="${git_remote}"
+BACKUP_DIR="/opt/opnsense-backup/repo"

@@ -1,0 +1,91 @@
+---
+# Bootstraps a fresh Proxmox node before any other playbook can run.
+# Connects as root with password (the only auth available on a fresh install).
+# After this runs, all other playbooks use the ansible user with key-based auth.
+#
+# Run with:
+#   ansible-playbook bootstrap-node.yml \
+#     -i inventory-cluster.yml \
+#     -e @vault.yml --ask-vault-pass \
+#     --ask-pass
+
+- name: Bootstrap Proxmox nodes
+  hosts: proxmox_bootstrap
+  gather_facts: false
+  become: false   # we're root already, no sudo needed
+
+  tasks:
+
+    # ── Prerequisites ──────────────────────────────────────────────────────────
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: python3
+        state: present
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: sudo
+        state: present
+
+    # ── Ansible user ───────────────────────────────────────────────────────────
+    - name: Create ansible user
+      ansible.builtin.user:
+        name: ansible
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Add ansible user to sudoers
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ansible
+        content: "ansible ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: '0440'
+        validate: visudo -cf %s
+
+    - name: Ensure .ssh directory exists for ansible user
+      ansible.builtin.file:
+        path: /home/ansible/.ssh
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0700'
+
+    - name: Add SSH public key for ansible user
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ ansible_ssh_public_key }}"
+        state: present
+
+    # ── SSH hardening ──────────────────────────────────────────────────────────
+    - name: Harden SSH configuration
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^#?Protocol',       line: 'Protocol 2' }
+        - { regexp: '^#?PermitRootLogin',       line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?KbdInteractiveAuthentication', line: 'KbdInteractiveAuthentication no' }
+        - { regexp: '^#?AllowUsers', line: 'AllowUsers ansible' }
+        - { regexp: '^#?AllowGroups', line: 'AllowGroups sshusers' }
+        - { regexp: '^#?PubkeyAuthentication',   line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?AuthorizedKeysFile',     line: 'AuthorizedKeysFile .ssh/authorized_keys' }
+        - { regexp: '^#?PermitEmptyPasswords',   line: 'PermitEmptyPasswords no' }
+        - { regexp: '^#?X11Forwarding',          line: 'X11Forwarding no' }
+        - { regexp: '^#?MaxAuthTries',          line: 'MaxAuthTries 3' }
+        - { regexp: '^#?AllowAgentForwarding',          line: 'AllowAgentForwarding no' }
+        - { regexp: '^#?AllowTcpForwarding',          line: 'AllowTcpForwarding no' }
+        - { regexp: '^#?LoginGraceTime',          line: 'LoginGraceTime 30' }
+        - { regexp: '^#?ClientAliveInterval',          line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax',          line: 'ClientAliveCountMax 2' }
+      notify: Restart sshd
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted

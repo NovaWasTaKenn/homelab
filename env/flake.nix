@@ -40,6 +40,9 @@
         python312Packages.proxmoxer
         molecule
         inputs.molecule-proxmox.packages.${system}.molecule-proxmox
+        podman
+        proxmox-auto-install-assistant
+        xorriso
       ];
 
       shellHook = ''

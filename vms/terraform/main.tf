@@ -24,7 +24,7 @@ data "local_file" "ssh_public_key" {
 
 
 module "opnsense-vm" {
-  source = "~/Repos/homelab/terraform_modules/opnsense-vm"
+  source = "../../terraform_modules/opnsense-vm"
   template_vm_id     = 9997              # your template VM ID
   target_node        = "node1"
   onboot             = true
@@ -43,8 +43,28 @@ module "opnsense-vm" {
   }
 }
 
+module "opnsense-bakcup-container" {
+  source = "~/Repos/homelab/terraform_modules/download-container"
+  ssh_public_key = data.local_file.ssh_public_key.content
+  img_url = "https://images.linuxcontainers.org/images/debian/bookworm/amd64/cloud/20260602_05:24/disk.qcow2" 
+  network_interfaces = [
+    {
+      name ="eth0"
+      bridge = "vnetall"
+      vlan_id = 100
+      model = "virtio"
+    }
+  ]
+  target_node = "node1"
+  datastore_id = "shared-template"
+  ct_user = "opnsense-backup"
+  ct_hostname = "opnsense-backup"
+  domain = "pve.local"
+  gateway_ip = "10.0.0.1"
+}
+
 module "vm1" {
-  source = "~/Repos/homelab/terraform_modules/template-vm"
+  source = "../../terraform_modules/template-vm"
   ssh_public_key = data.local_file.ssh_public_key.content
   template_vm_id = 9999
   target_node = "node1"

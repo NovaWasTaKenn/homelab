@@ -33,7 +33,7 @@ resource "proxmox_apt_standard_repository" "no_subscription" {
 # --- Create iscsi storage container -------------------------------------------
 
 module "iscsi-storage" {
-  source = "~/Repos/homelab/terraform_modules/template-container"
+  source = "~/Repos/homelab/terraform_modules/download-container"
   ssh_public_key = data.local_file.ssh_public_key.content
   template_ct_id = 9998
   target_node = "node1"
@@ -41,6 +41,11 @@ module "iscsi-storage" {
   ct_user = "nova"
   ct_hostname = "shared-temp-store"
   domain = "pve.local"
+  img_url = "https://cloud-images.ubuntu.com/releases/resolute/release-20260612/ubuntu-26.04-server-cloudimg-amd64-root.tar.xz"
+  if_name = "vtnet0"
+  if_bridge = "vmbr0"
+  domain = "storage.pve.local"
+  gateway_ip = "192.168.1.254"
 }
 
 # ── SDN — VXLAN zone ──────────────────────────────────────────────────────────

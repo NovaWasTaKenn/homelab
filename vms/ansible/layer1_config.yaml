@@ -1,0 +1,34 @@
+---
+- name: Setup automation users
+  hosts: proxmox
+  gather_facts: false
+  connection: local
+  vars_prompt:
+    - name: root_password
+      prompt: "Proxmox root password"
+      private: true
+
+    - name: terraform_prov_password
+      prompt: "Password for terraform-prov user"
+      private: true
+      confirm: true
+
+    - name: ansible_password
+      prompt: "Password for terraform-prov user"
+      private: true
+      confirm: true
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ ansible_host }}"
+      api_user: root@pam
+      api_password: "{{ root_password }}"
+      validate_certs: false
+  roles: 
+    - role: configure_opnsense_backup_job
+      vars: 
+          playbook_user: root@pam
+          backup_script_dest: /usr/local/bin/opnsense-backup
+          backup_env_dest: /etc/opnsense-backup.env
+          backup_dir: /opt/opnsense-backup/repo
+          deploy_key_dest: /root/.ssh/git_deploy_key
+          cron_log: /var/log/opnsense-backup.log    

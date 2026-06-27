@@ -1,0 +1,10 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ./configure_opnsense_backup_job
+
+backup_script_dest: /usr/local/bin/opnsense-backup
+backup_env_dest: /etc/opnsense-backup.env
+backup_dir: /opt/opnsense-backup/repo
+deploy_key_dest: /root/.ssh/git_deploy_key
+cron_log: /var/log/opnsense-backup.log
+

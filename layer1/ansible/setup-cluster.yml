@@ -1,0 +1,122 @@
+---
+# Creates a Proxmox cluster from the first node in the inventory group,
+# then joins every other node to it.
+#
+# Prerequisites:
+#   - All nodes have a fresh PVE install, not yet clustered
+#   - SSH as root, key-based, already set up
+#   - collection installed: ansible-galaxy collection install community.proxmox
+#
+# Cluster traffic uses the node's primary IP on vmbr0 (no separate link0/link1).
+#
+# Run with:
+#   ansible-playbook setup-cluster.yml -i inventory.yml -e @vault.yml --ask-vault-pass
+
+- name: Create or join Proxmox cluster
+  hosts: proxmox
+  gather_facts: false
+  become: true
+  serial: 1   # nodes must create/join one at a time, not in parallel
+  remote_user: root
+  vars_files: 
+    - vault.yaml
+  # vars_prompt: 
+  #   - name: root_password
+  #     prompt: "The root password"
+  #     private: true
+
+  vars:
+    cluster_name: "homelab"
+    # First host in the group is the cluster initiator
+    cluster_master: "{{ groups['proxmox'][0] }}"
+
+  module_defaults:
+    group/community.proxmox.proxmox:
+      api_host: "{{ ansible_host }}"
+      api_user: root@pam
+      api_password: "{{ proxmox_api_root_password }}"
+      validate_certs: false
+
+  tasks:
+
+    # ── Create the cluster on the first node ───────────────────────────────────
+    - name: Create cluster on {{ cluster_master }}
+      delegate_to: localhost
+      become: false
+      community.proxmox.proxmox_cluster:
+        state: present
+        cluster_name: "{{ cluster_name }}"
+      when: inventory_hostname == cluster_master
+
+    # ── Wait for corosync to settle on the master before anyone joins ──────────
+    - name: Wait for cluster to report quorate on master
+      ansible.builtin.command:
+        cmd: pvecm status
+      register: master_status
+      until: "'Quorate' in master_status.stdout or 'Quorate:Yes' in master_status.stdout"
+      retries: 10
+      delay: 5
+      when: inventory_hostname == cluster_master
+      changed_when: false
+
+    # ── Get join info (fingerprint) from the master ────────────────────────────
+    # Fetched fresh on every node's turn (not run_once) because serial: 1
+    # means each batch is really a separate play execution context.
+    - name: Retrieve cluster join info from master
+      delegate_to: localhost
+      become: false
+      community.proxmox.proxmox_cluster_join_info:
+        api_host: "{{ hostvars[cluster_master].ansible_host }}"
+        api_user: root@pam
+        api_password: "{{ proxmox_api_root_password }}"
+        validate_certs: false
+      register: join_info
+      delegate_to: localhost
+      when: inventory_hostname != cluster_master
+
+    - name: Extract master fingerprint
+      ansible.builtin.set_fact:
+        master_fingerprint: "{{ join_info.cluster_join.nodelist
+                                 | selectattr('name', 'equalto', cluster_master)
+                                 | map(attribute='pve_fp')
+                                 | first }}"
+      when: inventory_hostname != cluster_master
+
+    # ── Join every other node ───────────────────────────────────────────────────
+    - name: Join {{ inventory_hostname }} to the cluster
+      delegate_to: localhost
+      become: false
+      community.proxmox.proxmox_cluster:
+        state: present
+        master_ip: "{{ hostvars[cluster_master].ansible_host }}"
+        fingerprint: "{{ master_fingerprint }}"
+        master_api_password: "{{ proxmox_api_root_password }}"
+      when: inventory_hostname != cluster_master
+
+    # ── Wait for the join to settle before moving to the next node ─────────────
+    - name: Wait for node to appear in cluster status
+      ansible.builtin.command:
+        cmd: pvecm nodes
+      register: node_list
+      until: inventory_hostname in node_list.stdout
+      retries: 10
+      delay: 5
+      when: inventory_hostname != cluster_master
+      changed_when: false
+
+# ── Final verification — separate play, runs once after all joins complete ────
+- name: Show final cluster status
+  hosts: proxmox[0]
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Get cluster status
+      ansible.builtin.command:
+        cmd: pvecm status
+      register: final_status
+      changed_when: false
+
+    - name: Print cluster status
+      ansible.builtin.debug:
+        msg: "{{ final_status.stdout_lines }}"

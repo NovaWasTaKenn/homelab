@@ -1,0 +1,31 @@
+# PXE infrastructure for unattended Proxmox installation
+# Run on your PC: podman-compose up -d
+#
+# ISP router DHCP options:
+#   Option 66 (TFTP server): your PC's IP
+#   Option 67 (boot file):   ipxe.efi
+
+services:
+
+  # ── TFTP — serves the iPXE EFI binary ──────────────────────────────────────
+  tftp:
+    image: docker.io/pghalliday/tftp
+    container_name: pxe-tftp
+    network_mode: host
+    volumes:
+      - ./tftp:/var/tftpboot:ro
+    restart: unless-stopped
+
+  # ── HTTP — static files (GET) + answer file (POST /answer) ─────────────────
+  http:
+    build: ./http-server
+    container_name: pxe-http
+    network_mode: host
+    environment:
+      PORT: "8080"
+      STATIC_DIR: /srv
+      ANSWER_DIR: /answers
+    volumes:
+      - ./http:/srv:ro
+      - ./http/answers:/answers:ro
+    restart: unless-stopped
