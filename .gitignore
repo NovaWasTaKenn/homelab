@@ -8,5 +8,6 @@ vms/id_ed25519.pub
 *password
 *.direnv
 .envrc 
+.env
 vms/opnsense-config
 ansible_roles/create_pve_user/molecule/proxmox_secrets.yaml

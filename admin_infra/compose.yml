@@ -8,13 +8,16 @@
 services:
 
   # ── TFTP — serves the iPXE EFI binary ──────────────────────────────────────
-  tftp:
-    image: docker.io/pghalliday/tftp
-    container_name: pxe-tftp
+  dnsmasq:
+    build: ./dnsmasq-server
+    container_name: pxe-dnsmasq
     network_mode: host
     volumes:
-      - ./tftp:/var/tftpboot:ro
+      - ./tftp:/srv/tftp:ro
     restart: unless-stopped
+    cap_add: 
+    - NET_ADMIN
+    - NET_RAW
 
   # ── HTTP — static files (GET) + answer file (POST /answer) ─────────────────
   http:
@@ -25,7 +28,11 @@ services:
       PORT: "8080"
       STATIC_DIR: /srv
       ANSWER_DIR: /answers
+      ROOT_PASSWORD: ${ROOT_PASSWORD}
+      NODE_PREFIX: ${NODE_PREFIX}
+      ADMIN_HOST: ${ADMIN_HOST}
     volumes:
-      - ./http:/srv:ro
-      - ./http/answers:/answers:ro
+      - ./http-files:/srv:ro
+      - ./http-files/proxmox-answers:/answers:ro
+      - ./http-data:/data
     restart: unless-stopped

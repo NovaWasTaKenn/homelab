@@ -1,0 +1,19 @@
+[global]
+keyboard = "fr"
+country = "fr"
+fqdn = "{{.FQDN}}"
+mailto = "qlenestour@proton.me"
+timezone = "Europe/Paris"
+root_password = "{{.ROOT_PASSWORD}}"
+
+[network]
+source = "from-dhcp"
+
+[disk-setup]
+filesystem = "ext4"
+filter.DEVTYPE = "disk"
+
+[first-boot]
+source = "from-url"
+url = "http://{{.ADMIN_HOST}}/first-boot.sh"
+ordering = "fully-up"

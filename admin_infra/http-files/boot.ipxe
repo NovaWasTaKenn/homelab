@@ -15,41 +15,41 @@ choose --default auto --timeout 10000 target && goto ${target}
 
 :auto
     echo Loading Proxmox VE Automated Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-start-auto-installer
+    kernel proxmox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=proxmox-img/initrd.img splash=silent proxmox-start-auto-installer
     goto load
 
 :gui
     echo Loading Proxmox VE Graphical Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent
+    kernel promxox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=promox-img/initrd.img splash=silent
     goto load
 
 :tui
     echo Loading Proxmox VE Terminal UI Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-tui-mode vga=788
+    kernel promxox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=proxmox-img/initrd.img splash=silent proxmox-tui-mode vga=788
     goto load
 
 :serial
     echo Loading Proxmox VE Terminal UI, Serial Console Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-tui-mode console=ttyS0,115200
+    kernel promxox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=proxmox-img/initrd.img splash=silent proxmox-tui-mode console=ttyS0,115200
     goto load
 
 :debug
     echo Loading Proxmox VE Debug Mode Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug vga=788
+    kernel promxox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=proxmox-img/initrd.img splash=verbose proxmox-debug vga=788
     goto load
 
 :debugtui
     echo Loading Proxmox VE Terminal UI, Debug Mode Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug proxmox-tui-mode vga=788
+    kernel promxox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=proxmox-img/initrd.img splash=verbose proxmox-debug proxmox-tui-mode vga=788
     goto load
 
 :serialdebug
     echo Loading Proxmox VE Serial Console, Debug Mode Installer ...
-    kernel vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug proxmox-tui-mode console=ttyS0,115200
+    kernel promxox-img/vmlinuz ramdisk_size=16777216 rw quiet initrd=proxmox-img/initrd.img splash=verbose proxmox-debug proxmox-tui-mode console=ttyS0,115200
     goto load
 
 
 :load
-initrd initrd.img
-initrd proxmox-ve_9.2-1-auto-from-http-url.iso proxmox.iso
+initrd proxmox-img/initrd.img
+initrd proxmox-img/proxmox-ve_9.2-1-auto-from-http-url.iso proxmox.iso
 boot

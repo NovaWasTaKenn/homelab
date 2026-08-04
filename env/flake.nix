@@ -41,6 +41,7 @@
         molecule
         inputs.molecule-proxmox.packages.${system}.molecule-proxmox
         podman
+        podman-compose
         proxmox-auto-install-assistant
         xorriso
       ];
