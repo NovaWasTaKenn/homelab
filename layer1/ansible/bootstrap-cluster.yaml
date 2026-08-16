@@ -9,9 +9,9 @@
 
 - name: Setup terraform pve user
   tags: terraform_user
-  import_playbook: setup-terraform-pve-cluster.yaml
-
-- name: Setup shared storage
-  tags: storage
-  import_playbook: setup-iscsi-shared-storage.yaml
+  import_playbook: setup-terraform-pve-user.yaml
+#
+# - name: Setup shared storage
+#   tags: storage
+#   import_playbook: setup-iscsi-shared-storage.yaml
 

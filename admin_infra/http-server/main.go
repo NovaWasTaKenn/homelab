@@ -31,13 +31,13 @@ func configFromEnv() Config {
 		return def
 	}
 	return Config{
-		Port:         get("PORT", "8080"),
-		StaticDir:    get("STATIC_DIR", "/srv"),
-		AnswerDir:    get("ANSWER_DIR", "/answers"),
-		RootPassword: get("ROOT_PASSWORD", ""),
-		NodePrefix:   get("NODE_PREFIX", "node"),
-		StateFile:    get("STATE_FILE", "/data/nodes.json"),
-		AdminHost:    get("ADMIN_HOST", ""),
+		Port:         get("PXE_HTTP_PORT", "8080"),
+		StaticDir:    get("PXE_HTTP_STATIC_DIR", "/srv"),
+		AnswerDir:    get("PXE_HTTP_ANSWER_DIR", "/answers"),
+		RootPassword: get("PROXMOX_ROOT_PASSWORD", ""),
+		NodePrefix:   get("PXE_HTTP_NODE_PREFIX", "node"),
+		StateFile:    get("PXE_HTTP_STATE_FILE", "/data/nodes.json"),
+		AdminHost:    get("PXE_HTTP_ADMIN_HOST", ""),
 	}
 }
 

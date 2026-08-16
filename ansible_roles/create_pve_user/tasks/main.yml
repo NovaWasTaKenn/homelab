@@ -12,13 +12,13 @@
     validate_certs: false
     status_code: 200
   register: auth
-  no_log: true
+  no_log: false
 
 - name: Set auth facts
   set_fact:
     pve_ticket: "{{ auth.json.data.ticket }}"
     pve_csrf: "{{ auth.json.data.CSRFPreventionToken }}"
-  no_log: true
+  no_log: false
 
 # ── Role ─────────────────────────────────────────────────────────────────
 - name: Create role
@@ -30,11 +30,11 @@
 # ── User ─────────────────────────────────────────────────────────────────
 - name: Create terraform-prov@pve user
   community.proxmox.proxmox_user:
-    userid: "{{ terraform_user }}"
+    userid: "{{ pve_user }}"
     comment: "Terraform provisioner account"
     enable: true
     state: present
-  no_log: true
+  no_log: false
 
 # ── ACL ──────────────────────────────────────────────────────────────────
 - name: Assign role to user  on path /
@@ -56,7 +56,7 @@
     validate_certs: false
     status_code: [200, 500]   # 500 = not found in Proxmox API
   register: token_check
-  no_log: true
+  no_log: false
 
 - name: Create API token for user
   uri:
@@ -73,13 +73,13 @@
     status_code: 200
   register: token_result
   when: token_check.status == 500
-  no_log: true
+  no_log: false
 
 - name: Parse token secret
   set_fact:
     api_token_secret: "{{ token_result.json.data.value }}"
   when: token_result is not skipped
-  no_log: true
+  no_log: false
 
 # ── Write vault ───────────────────────────────────────────────────────────
 - name: Write API token to vault file
@@ -95,7 +95,7 @@
       terraform_prov_password: "{{terraform_prov_password}}"
       ansible_password: "{{ansible_password}}"
     mode: '0600'
-  no_log: true
+  no_log: false
 
 - name: Remind to encrypt vault
   debug:

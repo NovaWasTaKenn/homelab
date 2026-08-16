@@ -5,14 +5,29 @@ terraform {
       source  = "bpg/proxmox"
       version = "0.104.0"
     }
+    sops = {
+      source = "carlpett/sops"
+      version = "1.4.1"
+    }
   }
 }
 
+provider "sops" {}
+
+data "sops_file" "secrets" {
+  source_file = "${var.project_path}/secrets.yaml"
+}
+
 provider "proxmox" {
-  endpoint  = var.proxmox_endpoint
-  api_token = var.proxmox_api_token
+  endpoint  = var.proxmox_api
+  api_token = data.sops_file.secrets.data["proxmox_api_token"]
   insecure  = true   # set to false if you have a valid TLS cert on Proxmox
 }
+
+data "local_file" "ssh_public_key" {
+  filename = var.ssh_public_key_path
+}
+
 
 # ── Cluster options ───────────────────────────────────────────────────────────
 resource "proxmox_cluster_options" "options" {
@@ -40,12 +55,11 @@ module "iscsi-storage" {
   datastore_id = "local-lvm"
   ct_user = "nova"
   ct_hostname = "shared-temp-store"
-  domain = "pve.local"
+  domain = var.domain
   img_url = "https://cloud-images.ubuntu.com/releases/resolute/release-20260612/ubuntu-26.04-server-cloudimg-amd64-root.tar.xz"
   if_name = "vtnet0"
   if_bridge = "vmbr0"
-  domain = "storage.pve.local"
-  gateway_ip = "192.168.1.254"
+  gateway_ip = var.dns_address
 }
 
 # ── SDN — VXLAN zone ──────────────────────────────────────────────────────────

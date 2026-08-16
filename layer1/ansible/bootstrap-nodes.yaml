@@ -1,6 +1,7 @@
 ---
 # Bootstraps a fresh Proxmox node before any other playbook can run.
 # Connects as root with password (the only auth available on a fresh install).
+# Connects as ansible with ssh key (Setup with the proxmox install first boot script).
 # After this runs, all other playbooks use the ansible user with key-based auth.
 #
 # Run with:
@@ -12,7 +13,8 @@
 - name: Bootstrap Proxmox nodes
   hosts: proxmox_bootstrap
   gather_facts: false
-  become: false   # we're root already, no sudo needed
+  become: '{{ pxe_node }}'   # We connect with the ansible user then sudo if the node was installed with pxe boot otherwise we ssh as root with password
+  become_method: su
 
   tasks:
 
@@ -70,7 +72,6 @@
         - { regexp: '^#?PermitRootLogin',       line: 'PermitRootLogin no' }
         - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
         - { regexp: '^#?KbdInteractiveAuthentication', line: 'KbdInteractiveAuthentication no' }
-        - { regexp: '^#?AllowUsers', line: 'AllowUsers ansible' }
         - { regexp: '^#?AllowGroups', line: 'AllowGroups sshusers' }
         - { regexp: '^#?PubkeyAuthentication',   line: 'PubkeyAuthentication yes' }
         - { regexp: '^#?AuthorizedKeysFile',     line: 'AuthorizedKeysFile .ssh/authorized_keys' }

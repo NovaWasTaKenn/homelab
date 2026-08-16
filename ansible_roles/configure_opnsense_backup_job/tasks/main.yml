@@ -38,7 +38,7 @@
   vars:
     opnsense_host: "{{ opnsense_host }}"
     opnsense_api_key: "{{ opnsense_api_key }}"
-    opnsense_api_secret: "{{ opnsense_api_secret }}"
+    opnsense_api_secret: "{{ sops.opnsense_api_secret }}"
     git_remote: "{{ git_remote }}"
   no_log: true
 

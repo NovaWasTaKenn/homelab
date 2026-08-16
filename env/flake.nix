@@ -44,12 +44,16 @@
         podman-compose
         proxmox-auto-install-assistant
         xorriso
+        sops
+        age
       ];
 
       shellHook = ''
         echo 'Welcome'
+        set -a
+        source '/home/quentin/Repos/homelab/config.env'
+        set +a
         alias tf="terraform"
-        export  TEST_NXI_SHELL="TEST"
       '';
       #ENV_VAR = "";
     };

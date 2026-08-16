@@ -2,20 +2,6 @@
   hosts: proxmox
   gather_facts: false
   connection: local
-  vars_prompt:
-    - name: root_password
-      prompt: "Proxmox root password"
-      private: true
-
-    - name: terraform_prov_password
-      prompt: "Password for terraform-prov user"
-      private: true
-      confirm: true
-
-    - name: ansible_password
-      prompt: "Password for terraform-prov user"
-      private: true
-      confirm: true
   module_defaults:
     group/community.proxmox.proxmox:
       api_host: "{{ ansible_host }}"
@@ -25,11 +11,15 @@
   roles: 
     - role: create_pve_user
       vars: 
+          ansible_python_interpreter: "/nix/store/l9k0anq0z7zz81zcwy035jfwap9ga6rl-python3-3.13.13/bin/python3"
+          pve_api_base: 'https://{{ ansible_host }}:8006/api2/json'
           playbook_user: root@pam
-          playbook_password: root_password
+          playbook_password: '{{ root_password }}'
           pve_user: "terraform-prov@pve"
           pve_role: "TerraformProv"
           pve_user_password: "{{ terraform_prov_password }}"
+          terraform_user: "terraform-prov@pve"
+          project_dir: '/home/quentin/Repos/homelab/layer1/ansible'
           pve_privileges:
             - VM.Allocate
             - Datastore.Audit

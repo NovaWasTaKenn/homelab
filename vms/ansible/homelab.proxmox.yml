@@ -1,12 +1,14 @@
 plugin: community.proxmox.proxmox
-url: https://192.168.1.202:8006
+url: "{{ lookup('ANSIBLE_PROXMOX_API') }}"
 validate_certs: false
-user: 'terraform-prov@pve'
-token_id: 'terraform'
+user: "{{ lookup('ANSIBLE_USER_PVE') }}"
+token_id: "{{ lookup('ANSIBLE_PROXMOX_TOKEN_ID') }}"
 want_proxmox_nodes_ansible_host: true
 want_facts: true
 compose:
   ansible_host: proxmox_agent_interfaces[1]["ip-addresses"][0].split('/')[0]
+  project_path: "{{ lookup('PROJECT_PATH') }}"
+  sops: "{{ lookup('community.sops.sops', project_path + 'secrets.yaml') | ansible.builtin.from_yaml }}"
 keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""

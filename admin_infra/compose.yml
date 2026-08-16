@@ -28,7 +28,7 @@ services:
       PORT: "8080"
       STATIC_DIR: /srv
       ANSWER_DIR: /answers
-      ROOT_PASSWORD: ${ROOT_PASSWORD}
+      ROOT_PASSWORD: ${PROXMOX_ROOT_PASSWORD}
       NODE_PREFIX: ${NODE_PREFIX}
       ADMIN_HOST: ${ADMIN_HOST}
     volumes:

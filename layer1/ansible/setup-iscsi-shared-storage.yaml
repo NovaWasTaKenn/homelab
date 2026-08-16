@@ -47,7 +47,7 @@
     - name: Add iSCSI storage
       uri:
         url: "{{ pve_api_base }}/storage"
-        method: POST
+        method: PUT
         headers:
           Cookie: "PVEAuthCookie={{ pve_ticket }}"
           CSRFPreventionToken: "{{ pve_csrf }}"
@@ -57,7 +57,7 @@
           type: iscsi
           portal: "{{ iscsi_portal }}"
           target: "{{ iscsi_iqn }}"
-          shared: 1
+          shared: true
         validate_certs: false
         status_code: 200
       when: iscsi_check.status == 500

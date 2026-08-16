@@ -4,33 +4,41 @@ terraform {
       source = "bpg/proxmox"
       version = "0.104.0"
     }
+    sops = {
+      source = "carlpett/sops"
+      version = "1.4.1"
+    }
   }
 }
 
+provider "sops" {}
+
+data "sops_file" "secrets" {
+  source_file = "${var.project_path}/secrets.yaml"
+}
+
 provider "proxmox" {
-  endpoint = "https://192.168.1.201:8006/"
-  api_token = var.api_token
-  insecure = true
+  endpoint  = var.proxmox_api
+  api_token = data.sops_file.secrets.data["proxmox_api_token"]
+  insecure  = true   # set to false if you have a valid TLS cert on Proxmox
   ssh {
     agent    = true
-    username = "root"
+    username = var.proxmox_provide_user
   }
 }
 
 data "local_file" "ssh_public_key" {
-  filename = var.ssh_pkey_path
+  filename = var.ssh_public_key_path
 }
-
-
 
 module "opnsense-vm" {
   source = "../../terraform_modules/opnsense-vm"
   template_vm_id     = 9997              # your template VM ID
-  target_node        = "node1"
+  target_node        = "node-3"
   onboot             = true
-  target_node_domain = "pve.local"
+  target_node_domain = var.domain
   vm_hostname        = "opnsense"
-  domain             = "pve.local"
+  domain             = var.domain
   vm_tags            = ["opnsense", "networking"]
   sockets            = 1
   cores              = 2
@@ -55,23 +63,23 @@ module "opnsense-bakcup-container" {
       model = "virtio"
     }
   ]
-  target_node = "node1"
+  target_node = "node-3"
   datastore_id = "shared-template"
   ct_user = "opnsense-backup"
   ct_hostname = "opnsense-backup"
-  domain = "pve.local"
-  gateway_ip = "10.0.0.1"
+  domain = var.domain
+  gateway_ip = var.homelab_vnet_dns
 }
 
 module "vm1" {
   source = "../../terraform_modules/template-vm"
   ssh_public_key = data.local_file.ssh_public_key.content
   template_vm_id = 9999
-  target_node = "node1"
+  target_node = "node-3"
   onboot = true
-  target_node_domain = "pve.local"
+  target_node_domain = var.domain
   vm_hostname = "vm1"
-  domain = "pve.local"
+  domain = var.domain
   vm_tags = ["ubuntu", "basic_vm"]
   sockets = 1
   cores = 1

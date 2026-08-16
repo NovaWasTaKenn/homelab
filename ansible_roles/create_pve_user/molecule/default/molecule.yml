@@ -9,33 +9,33 @@ dependency:
 driver:
   name: molecule-proxmox
   options:
-    api_host: "${PROXMOX_API}"
-    api_user: "${PROXMOX_USER}"
-    api_token_id: "${PROXMOX_TOKEN_ID}"
-    api_token_secret: "${PROXMOX_TOKEN_SECRET}"
-    node: "${PROXMOX_NODE}"
-    ssh_user: ansible
-    ssh_identity_file: "${HOME}/.ssh/id_ed25519"
+    api_host: "${MOLECULE_PROXMOX_API}"
+    api_user: "${MOLECULE_PROXMOX_USER}"
+    api_token_id: "${MOLECULE_PROXMOX_TOKEN_ID}"
+    api_token_secret: "${MOLECULE_PROXMOX_TOKEN_SECRET}"
+    node: "${MOLECULE_PROXMOX_NODE}"
+    ssh_user: "${MOLECULE_PROXMOX_USER}"
+    ssh_identity_file: "${MOLECULE_SSH_IDENTITY_FILE}"
 
 platforms:
   - name: test-prov-user
-    template_name: "${PROXMOX_TEMPLATE}"
+    template_name: "${MOLECULE_PROXMOX_TEMPLATE}"
     ciuser: ansible
     sshkeys: "${MOLECULE_SSH_PUBLIC_KEY}"
     ipconfig:
       ipconfig0: "ip=dhcp"
     nameservers:
-      - "${PROXMOX_DNS}"
+      - "${MOLECULE_PROXMOX_DNS}"
 
 provisioner:
   name: ansible
   env:
-    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+    ANSIBLE_ROLES_PATH: "${PROJECT_PATH}/ansible_roles/create_pve_user/../"
   inventory:
     group_vars:
       all: 
-        proxmox_host: "homelab.pve.local"
-        pve_api_base: "https://homelab.pve.local:8006/api2/json"
+        proxmox_host: "${MOLECULE_PROXMOX_HOST}"
+        pve_api_base: "${MOLECULE_PROXMOX_API}"
         pve_user: "terraform-prov@pve"
         pve_role: "TerraformProv"
         playbook_user: "root@pam"

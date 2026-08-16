@@ -34,7 +34,7 @@
     group/community.proxmox.proxmox:
       api_host: "{{ ansible_host }}"
       api_user: root@pam
-      api_password: "{{ proxmox_api_root_password }}"
+      api_password: "{{ root_password }}"
       validate_certs: false
 
   tasks:
@@ -68,7 +68,7 @@
       community.proxmox.proxmox_cluster_join_info:
         api_host: "{{ hostvars[cluster_master].ansible_host }}"
         api_user: root@pam
-        api_password: "{{ proxmox_api_root_password }}"
+        api_password: "{{ root_password }}"
         validate_certs: false
       register: join_info
       delegate_to: localhost
@@ -90,7 +90,7 @@
         state: present
         master_ip: "{{ hostvars[cluster_master].ansible_host }}"
         fingerprint: "{{ master_fingerprint }}"
-        master_api_password: "{{ proxmox_api_root_password }}"
+        master_api_password: "{{ root_password }}"
       when: inventory_hostname != cluster_master
 
     # ── Wait for the join to settle before moving to the next node ─────────────
