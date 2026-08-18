@@ -7,11 +7,6 @@
   gather_facts: false
   run_once: true   # cluster-wide storage config, one node is enough
 
-  vars_prompt:
-    - name: root_password
-      prompt: "Proxmox root password"
-      private: true
-
   vars:
     pve_api_base: "https://{{ ansible_host }}:8006/api2/json"
 

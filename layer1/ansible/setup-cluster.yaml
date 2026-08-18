@@ -18,8 +18,6 @@
   become: true
   serial: 1   # nodes must create/join one at a time, not in parallel
   remote_user: root
-  vars_files: 
-    - vault.yaml
   # vars_prompt: 
   #   - name: root_password
   #     prompt: "The root password"

@@ -1,7 +1,7 @@
 all:
   vars:
-    project_path: "{{ lookup('PROJECT_PATH')}}"
-    sops: "{{ lookup('community.sops.sops', project_path+'secrets.yaml') | ansible.builtin.from_yaml }}"
+    project_path: "{{ lookup('env','PROJECT_PATH')}}"
+    sops: "{{ lookup('community.sops.sops', project_path+'/secrets.enc.yaml') | ansible.builtin.from_yaml }}"
   children:
     proxmox:
       hosts:
@@ -12,13 +12,13 @@ all:
 
       vars:
         ansible_python_interpreter: /nix/store/l9k0anq0z7zz81zcwy035jfwap9ga6rl-python3-3.13.13/bin/python3
-        ansible_user: "{{ lookup('ANSIBLE_USER') }}"
+        ansible_user: "{{ lookup('env','ANSIBLE_USER') }}"
         root_user: root
-        ansible_ssh_private_key_file: "{{ lookup('ANSIBLE_SSH_PRIVATE_KEY_FILE') }}"
+        ansible_ssh_private_key_file: "{{ lookup('env','ANSIBLE_SSH_PRIVATE_KEY_FILE') }}"
         ansible_ssh_extra_args: "-o StrictHostKeyChecking=no"
-        ansible_ssh_public_key: "{{ lookup('ANSIBLE_SSH_PUBLIC_KEY') }}"
-        iscsi_portal: "{{ lookup('ANSIBLE_ISCSI_PORTAL') }}"
-        iscsi_iqn: "{{ lookup('ANSIBLE_ISCSI_IQN') }}"
+        ansible_ssh_public_key: "{{ lookup('env','ANSIBLE_SSH_PUBLIC_KEY') }}"
+        iscsi_portal: "{{ lookup('env','ANSIBLE_ISCSI_PORTAL') }}"
+        iscsi_iqn: "{{ lookup('env','ANSIBLE_ISCSI_IQN') }}"
         root_password: "{{ sops.proxmox_root_password }}" 
         terraform_prov_password: "{{ sops.terraform_prov_password }}" 
 
@@ -32,10 +32,10 @@ all:
           pxe_node: true
       vars:
         ansible_python_interpreter: /usr/bin/python3
-        ansible_user: "{{ lookup('ANSIBLE_USER') }}"
+        ansible_user: "{{ lookup('env','ANSIBLE_USER') }}"
         root_user: root
-        ansible_ssh_private_key_file: "{{ lookup('ANSIBLE_SSH_PRIVATE_KEY_FILE') }}"
+        ansible_ssh_private_key_file: "{{ lookup('env','ANSIBLE_SSH_PRIVATE_KEY_FILE') }}"
         ansible_ssh_extra_args: "-o StrictHostKeyChecking=no"
-        ansible_ssh_public_key: "{{ lookup('ANSIBLE_SSH_PUBLIC_KEY') }}"
+        ansible_ssh_public_key: "{{ lookup('env','ANSIBLE_SSH_PUBLIC_KEY') }}"
         ansible_password: "{{ sops.proxmox_root_password }}"
         ansible_become_password: "{{ sops.proxmox_root_password }}"
