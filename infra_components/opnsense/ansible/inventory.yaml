@@ -1,0 +1,20 @@
+all:
+  vars:
+    project_path: "{{ lookup('env', 'PROJECT_PATH') }}"
+    sops: "{{ lookup('community.sops.sops', project_path + '/secrets.enc.yaml') | ansible.builtin.from_yaml }}"
+    opnsense_host: "{{ lookup('env', 'OPNSENSE_HOST') }}"
+    opnsense_api_key: "{{ sops.opnsense_api_key }}"
+    opnsense_api_secret: "{{ sops.opnsense_api_secret }}"
+    git_remote: "{{ lookup('env', 'OPNSENSE_BACKUP_GIT_REMOTE') }}"
+    git_deploy_key: "{{ sops.git_deploy_key }}"
+
+  children:
+    opnsense:
+      hosts:
+        localhost:
+          ansible_connection: local
+
+    opnsense_backup:
+      hosts:
+        opnsense-backup.pve.local:
+          ansible_host: SET_ME_AFTER_DEPLOYMENT

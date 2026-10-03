@@ -1,0 +1,39 @@
+# PXE infrastructure for unattended Proxmox installation
+# Run on your PC: podman-compose up -d
+#
+# ISP router DHCP options:
+#   Option 66 (TFTP server): your PC's IP
+#   Option 67 (boot file):   ipxe.efi
+
+services:
+
+  # ── TFTP — serves the iPXE EFI binary ──────────────────────────────────────
+  dnsmasq:
+    build: ./dnsmasq-server
+    container_name: pxe-dnsmasq
+    network_mode: host
+    volumes:
+      - ./tftp:/srv/tftp:ro
+    restart: unless-stopped
+    cap_add: 
+    - NET_ADMIN
+    - NET_RAW
+
+  # ── HTTP — static files (GET) + answer file (POST /answer) ─────────────────
+  http:
+    build: ./http-server
+    container_name: pxe-http
+    network_mode: host
+    environment:
+      - PORT=${PXE_HTTP_PORT:?run via 'just setup-pxe-infra'}
+      - STATIC_DIR=${PXE_HTTP_STATIC_DIR:?run via 'just setup-pxe-infra'}
+      - ANSWER_DIR=${PXE_HTTP_ANSWER_DIR:?run via 'just setup-pxe-infra'}
+      - ROOT_PASSWORD=${proxmox_root_password:?run via 'just setup-pxe-infra'}
+      - NODE_PREFIX=${PXE_HTTP_NODE_PREFIX:?run via 'just setup-pxe-infra'}
+      - ADMIN_HOST=${PXE_HTTP_ADMIN_HOST:?run via 'just setup-pxe-infra'}
+      - STATE_FILE=${PXE_HTTP_STATE_FILE:?run via 'just setup-pxe-infra'}
+    volumes:
+      - ./http-files:/srv:ro
+      - ./http-files/proxmox-answers:/answers:ro
+      - ./http-data:/data
+    restart: unless-stopped
