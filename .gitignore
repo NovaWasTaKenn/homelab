@@ -11,3 +11,6 @@ vms/id_ed25519.pub
 .env
 vms/opnsense-config
 ansible_roles/create_pve_user/molecule/proxmox_secrets.yaml
+/infra_components/admin_infra/http-files/proxmox-img/proxmox-ve_9.2-1-auto-from-http-url.iso
+/infra_components/admin_infra/http-files/proxmox-img/initrd.img
+/infra_components/admin_infra/http-files/proxmox-img/vmlinuz
