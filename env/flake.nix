@@ -33,8 +33,11 @@
 
     devShells."x86_64-linux".default = pkgs.mkShell {
       packages = with pkgs; [
+        git-lfs
         terraform
+        tflint
         ansible
+        ansible-lint
         cloud-init
         python312
         python312Packages.proxmoxer
@@ -45,6 +48,7 @@
         proxmox-auto-install-assistant
         xorriso
         sops
+        just
         age
       ];
 
