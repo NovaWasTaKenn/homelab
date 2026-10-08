@@ -71,10 +71,10 @@ resource "proxmox_virtual_environment_container" "container" {
 
     for_each = var.network_interfaces
     content {
-      name     = network_interface.name
-      bridge   = network_interface.bridge
+      name     = network_interface.value["name"]
+      bridge   = network_interface.value["bridge"]
       firewall = false
-      vlan_id = network_interface.vlan_id
+      vlan_id = network_interface.value["vlan_id"]
     }
   }
 
