@@ -12,7 +12,7 @@ driver:
     api_host: "${MOLECULE_PROXMOX_API}"
     api_user: "${MOLECULE_PROXMOX_USER}"
     api_token_id: "${MOLECULE_PROXMOX_TOKEN_ID}"
-    api_token_secret: "${MOLECULE_PROXMOX_TOKEN_SECRET}"
+    api_token_secret: "${proxmox_api_token}"
     node: "${MOLECULE_PROXMOX_NODE}"
     ssh_user: "${MOLECULE_PROXMOX_USER}"
     ssh_identity_file: "${MOLECULE_SSH_IDENTITY_FILE}"
@@ -30,7 +30,7 @@ platforms:
 provisioner:
   name: ansible
   env:
-    ANSIBLE_ROLES_PATH: "${PROJECT_PATH}/ansible_roles/create_pve_user/../"
+    ANSIBLE_ROLES_PATH: "${ANSIBLE_ROLES_PATH}"
   inventory:
     group_vars:
       all: 
@@ -39,8 +39,8 @@ provisioner:
         pve_user: "terraform-prov@pve"
         pve_role: "TerraformProv"
         playbook_user: "root@pam"
-        playbook_password: "${PROXMOX_ROOT_PASSWORD}"
-        root_password: "${PROXMOX_ROOT_PASSWORD}"
+        playbook_password: "${proxmox_root_password}"
+        root_password: "${proxmox_root_password}"
         terraform_user: "terraform-prov@pve"
         pve_privileges:
           - VM.Allocate
