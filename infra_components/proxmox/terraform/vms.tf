@@ -1,9 +1,9 @@
-# ── OPNsense router VM ─────────────────────────────────────────────────────────
+# ── OPNsense router VM (pinned — not auto-placed, router stability) ───────────
 module "opnsense-vm" {
   source = "../../../modules/terraform_modules/opnsense-vm"
 
   template_vm_id     = 9997
-  target_node        = "node-3"
+  target_node        = "node-2"
   onboot             = true
   target_node_domain = var.domain
   vm_hostname        = "opnsense"
@@ -12,7 +12,7 @@ module "opnsense-vm" {
   sockets            = 1
   cores              = 2
   memory             = 4096
-  vm_user            = "root"            # OPNsense uses root
+  vm_user            = "root" # OPNsense uses root
   ssh_public_key     = data.local_file.ssh_public_key.content
   disk = {
     storage = "local-lvm"
@@ -20,48 +20,45 @@ module "opnsense-vm" {
   }
 }
 
-# ── OPNsense backup container ────────────────────────────────────────────────
-module "opnsense-backup-container" {
-  source = "../../../modules/terraform_modules/download-container"
-
-  ssh_public_key = data.local_file.ssh_public_key.content
-  img_url        = "https://images.linuxcontainers.org/images/debian/bookworm/amd64/cloud/20260602_05:24/disk.qcow2"
-  network_interfaces = [
-    {
-      name    = "eth0"
-      bridge  = "vnetall"
-      vlan_id = 100
-      model   = "virtio"
-    }
-  ]
-  target_node  = "node-3"
-  datastore_id = "shared-template"
-  ct_user      = "opnsense-backup"
-  ct_hostname  = "opnsense-backup"
-  domain       = var.domain
-  gateway_ip   = var.homelab_vnet_dns
-}
-
-# ── General-purpose template VM ────────────────────────────────────────────────
-module "vm1" {
-  source = "../../../modules/terraform_modules/template-vm"
+# ── Auto-placed VMs ───────────────────────────────────────────────────────────
+# Definitions live in proxmox.tfvars; node assignment is computed in
+# placement.tf (one-offs on the biggest node, replicas spread).
+module "vms" {
+  source   = "../../../modules/terraform_modules/download-vm"
+  for_each = module.vm_placement.instances
 
   ssh_public_key     = data.local_file.ssh_public_key.content
-  template_vm_id     = 9999
-  target_node        = "node-3"
-  onboot             = true
+  download_url       = each.value.download_url
+  checksum           = each.value.checksum
+  target_node        = each.value.target_node
+  onboot             = each.value.onboot
   target_node_domain = var.domain
-  vm_hostname        = "vm1"
+  vm_hostname        = each.value.name
   domain             = var.domain
-  vm_tags            = ["ubuntu", "basic_vm"]
-  sockets            = 1
-  cores              = 1
-  memory             = 2048
-  vm_user            = "sysadmin"
-  disk = {
-    storage = "local-lvm"
-    size    = 10
-  }
+  vm_tags            = each.value.tags
+  sockets            = each.value.sockets
+  cores              = each.value.cores
+  memory             = each.value.memory
+  vm_user            = each.value.user
+  disk               = each.value.disk
+  additionnal_disks  = each.value.additionnal_disks
+}
+
+# ── Auto-placed containers ────────────────────────────────────────────────────
+module "containers" {
+  source   = "../../../modules/terraform_modules/download-container"
+  for_each = module.ct_placement.instances
+
+  ssh_public_key     = data.local_file.ssh_public_key.content
+  img_url            = each.value.img_url
+  network_interfaces = each.value.network_interfaces
+  target_node        = each.value.target_node
+  datastore_id       = each.value.datastore_id
+  ct_user            = each.value.user
+  ct_hostname        = each.value.name
+  domain             = var.domain
+  gateway_ip         = var.homelab_vnet_dns
+  tags               = each.value.tags
 }
 
 # ── iSCSI shared storage container (placeholder — needs parameterisation) ─────
