@@ -1,9 +1,9 @@
 # ── SDN — VXLAN zone ──────────────────────────────────────────────────────────
 resource "proxmox_sdn_zone_vxlan" "homelab" {
   id    = "homelab"
-  peers = var.node_ips   # list of node IPs for VXLAN peer mesh
-  mtu   = 1450           # 1500 - 50 bytes VXLAN overhead
-  nodes = var.nodes
+  peers = local.node_ips   # list of node IPs for VXLAN peer mesh
+  mtu   = 1450             # 1500 - 50 bytes VXLAN overhead
+  nodes = local.nodes
 }
 
 # SDN applier — pushes zone config to all nodes before creating the vnet

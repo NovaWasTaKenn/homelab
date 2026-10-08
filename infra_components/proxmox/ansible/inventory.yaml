@@ -1,17 +1,15 @@
+# Hosts are not listed here: they are registered at runtime from the node
+# registry (nodes.json at the project root, written by the PXE infra) by
+# register-nodes.yaml, which every playbook imports first. This file only
+# carries group vars.
 all:
   vars:
     project_path: "{{ lookup('env','PROJECT_PATH')}}"
     sops: "{{ lookup('community.sops.sops', project_path+'/secrets.enc.yaml') | ansible.builtin.from_yaml }}"
   children:
     proxmox:
-      hosts:
-        node-2: 
-          ansible_host: 192.168.1.132
-        node-1: 
-          ansible_host: 192.168.1.51
-
       vars:
-        ansible_python_interpreter: /nix/store/l9k0anq0z7zz81zcwy035jfwap9ga6rl-python3-3.13.13/bin/python3
+        ansible_python_interpreter: /usr/bin/env python3
         ansible_user: "{{ lookup('env','ANSIBLE_USER') }}"
         root_user: root
         ansible_ssh_private_key_file: "{{ lookup('env','ANSIBLE_SSH_PRIVATE_KEY_FILE') }}"
@@ -23,13 +21,6 @@ all:
         terraform_prov_password: "{{ sops.terraform_prov_password }}" 
 
     proxmox_bootstrap:
-      hosts:
-        node-2: 
-          ansible_host: 192.168.1.132
-          pxe_node: true
-        node-1: 
-          ansible_host: 192.168.1.51
-          pxe_node: true
       vars:
         ansible_python_interpreter: /usr/bin/python3
         ansible_user: "{{ lookup('env','ANSIBLE_USER') }}"

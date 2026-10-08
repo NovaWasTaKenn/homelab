@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ type Config struct {
 	RootPassword string
 	NodePrefix   string
 	StateFile    string
+	RegistryFile string
 	AdminHost    string
 }
 
@@ -38,6 +40,7 @@ func configFromEnv() Config {
 		RootPassword: get("ROOT_PASSWORD", ""),
 		NodePrefix:   get("NODE_PREFIX", "node"),
 		StateFile:    get("STATE_FILE", "/data/nodes.json"),
+		RegistryFile: get("REGISTRY_FILE", "/registry/nodes.json"),
 		AdminHost:    get("ADMIN_HOST", ""),
 	}
 }
@@ -71,6 +74,38 @@ func (s *NodeState) save(path string) error {
 	return os.WriteFile(path, data, 0644)
 }
 
+// NodeRegistry is the shared node name → IP mapping written by this server
+// and consumed by Terraform and Ansible.
+type NodeRegistry struct {
+	Nodes map[string]string `json:"nodes"` // name → ip
+}
+
+func loadRegistry(path string) (*NodeRegistry, error) {
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return &NodeRegistry{Nodes: make(map[string]string)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var r NodeRegistry
+	if err := json.Unmarshal(data, &r); err != nil {
+		return nil, err
+	}
+	if r.Nodes == nil {
+		r.Nodes = make(map[string]string)
+	}
+	return &r, nil
+}
+
+func (r *NodeRegistry) save(path string) error {
+	data, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
 // resolveID returns the existing ID for a MAC, or assigns a new one.
 func (s *NodeState) resolveID(mac string) (int, bool) {
 	if id, exists := s.Nodes[mac]; exists {
@@ -97,9 +132,10 @@ type SystemInfo struct {
 }
 
 type Server struct {
-	cfg   Config
-	mu    sync.Mutex
-	state *NodeState
+	cfg      Config
+	mu       sync.Mutex
+	state    *NodeState
+	registry *NodeRegistry
 }
 
 func main() {
@@ -117,7 +153,16 @@ func main() {
 		log.Fatalf("failed to load state: %v", err)
 	}
 
-	s := &Server{cfg: cfg, state: state}
+	if err := os.MkdirAll(filepath.Dir(cfg.RegistryFile), 0755); err != nil {
+		log.Fatalf("failed to create registry directory: %v", err)
+	}
+
+	registry, err := loadRegistry(cfg.RegistryFile)
+	if err != nil {
+		log.Fatalf("failed to load node registry: %v", err)
+	}
+
+	s := &Server{cfg: cfg, state: state, registry: registry}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /answer", s.answerHandler)
@@ -140,22 +185,49 @@ func (s *Server) answerHandler(w http.ResponseWriter, r *http.Request) {
 	mac := parseMac(body)
 
 	if mac == "" {
-    log.Print("Mac address is empty")
-    http.Error(w, "Mac address is empty", http.StatusInternalServerError)
-    return
+		log.Print("Mac address is empty")
+		http.Error(w, "Mac address is empty", http.StatusInternalServerError)
+		return
 	}
 
-	// Per-MAC override takes priority
-	if mac != "" {
-		if content, err := os.ReadFile(filepath.Join(s.cfg.AnswerDir, mac+".toml")); err == nil {
-			log.Printf("Serving per-MAC override for %s", mac)
-			w.Header().Set("Content-Type", "text/plain")
-			w.Write(content)
+	// Resolve the node's identity and record its IP in the shared registry.
+	s.mu.Lock()
+	id, isNew := s.state.resolveID(mac)
+	if isNew {
+		if err := s.state.save(s.cfg.StateFile); err != nil {
+			s.mu.Unlock()
+			log.Printf("Failed to save state: %v", err)
+			http.Error(w, "failed to save state", http.StatusInternalServerError)
 			return
 		}
 	}
+	name := fmt.Sprintf("%s-%d", s.cfg.NodePrefix, id)
+	if ip := clientIP(r); s.registry.Nodes[name] != ip {
+		s.registry.Nodes[name] = ip
+		if err := s.registry.save(s.cfg.RegistryFile); err != nil {
+			s.mu.Unlock()
+			log.Printf("Failed to save node registry: %v", err)
+			http.Error(w, "failed to save node registry", http.StatusInternalServerError)
+			return
+		}
+	}
+	s.mu.Unlock()
 
-	content, err := s.generateAnswer(mac)
+	action := "existing"
+	if isNew {
+		action = "new"
+	}
+	log.Printf("Answering %s node %s (%s, id=%d)", action, mac, name, id)
+
+	// Per-MAC override takes priority
+	if content, err := os.ReadFile(filepath.Join(s.cfg.AnswerDir, mac+".toml")); err == nil {
+		log.Printf("Serving per-MAC override for %s", mac)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write(content)
+		return
+	}
+
+	content, err := s.generateAnswer(name)
 	if err != nil {
 		log.Printf("Failed to generate answer: %v", err)
 		http.Error(w, "failed to generate answer", http.StatusInternalServerError)
@@ -166,7 +238,7 @@ func (s *Server) answerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (s *Server) generateAnswer(mac string) ([]byte, error) {
+func (s *Server) generateAnswer(name string) ([]byte, error) {
 	tmplContent, err := os.ReadFile(filepath.Join(s.cfg.AnswerDir, "template.toml"))
 	if err != nil {
 		return nil, fmt.Errorf("reading template: %w", err)
@@ -176,25 +248,9 @@ func (s *Server) generateAnswer(mac string) ([]byte, error) {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
 
-	s.mu.Lock()
-	id, isNew := s.state.resolveID(mac)
-	if isNew {
-		if err := s.state.save(s.cfg.StateFile); err != nil {
-			s.mu.Unlock()
-			return nil, fmt.Errorf("saving state: %w", err)
-		}
-	}
-	s.mu.Unlock()
-
-	action := "existing"
-	if isNew {
-		action = "new"
-	}
-	log.Printf("Generating answer for %s node %s (id=%d)", action, mac, id)
-
 	data := TemplateData{
 		ROOT_PASSWORD: s.cfg.RootPassword,
-		FQDN:         fmt.Sprintf("%s-%d.pve.local", s.cfg.NodePrefix, id),
+		FQDN:         fmt.Sprintf("%s.pve.local", name),
 		ADMIN_HOST:   s.cfg.AdminHost,
 	}
 
@@ -203,6 +259,15 @@ func (s *Server) generateAnswer(mac string) ([]byte, error) {
 		return nil, fmt.Errorf("executing template: %w", err)
 	}
 	return []byte(buf.String()), nil
+}
+
+// clientIP returns the request's source IP with the port stripped.
+func clientIP(r *http.Request) string {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }
 
 // parseMac extracts the MAC of the first non-loopback wired interface.

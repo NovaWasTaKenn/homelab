@@ -1,0 +1,24 @@
+---
+# Populates the proxmox / proxmox_bootstrap inventory groups from the node
+# registry (nodes.json at the project root), which the PXE infra writes when
+# nodes are (re)installed. Imported first by every playbook that targets the
+# proxmox groups so they stay runnable standalone.
+
+- name: Register nodes from the PXE registry
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Load the node registry
+      ansible.builtin.set_fact:
+        node_registry: "{{ lookup('file', project_path + '/nodes.json') | from_json }}"
+
+    - name: Add nodes to the inventory
+      ansible.builtin.add_host:
+        name: "{{ item.key }}"
+        ansible_host: "{{ item.value }}"
+        groups:
+          - proxmox
+          - proxmox_bootstrap
+        pxe_node: true
+      loop: "{{ node_registry.nodes | dict2items }}"

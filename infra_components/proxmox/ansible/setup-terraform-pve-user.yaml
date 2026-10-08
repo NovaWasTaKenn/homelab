@@ -1,3 +1,5 @@
+- import_playbook: register-nodes.yaml
+
 - name: Setup automation users
   hosts: proxmox
   gather_facts: false
@@ -11,7 +13,7 @@
   roles: 
     - role: create_pve_user
       vars: 
-          ansible_python_interpreter: "/nix/store/l9k0anq0z7zz81zcwy035jfwap9ga6rl-python3-3.13.13/bin/python3"
+          ansible_python_interpreter: "/usr/bin/env python3"
           pve_api_base: 'https://{{ ansible_host }}:8006/api2/json'
           playbook_user: root@pam
           playbook_password: '{{ root_password }}'
@@ -19,7 +21,6 @@
           pve_role: "TerraformProv"
           pve_user_password: "{{ terraform_prov_password }}"
           terraform_user: "terraform-prov@pve"
-          project_dir: '/home/quentin/Repos/homelab/layer1/ansible'
           pve_privileges:
             - VM.Allocate
             - Datastore.Audit

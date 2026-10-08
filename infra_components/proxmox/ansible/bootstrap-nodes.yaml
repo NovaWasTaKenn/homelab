@@ -9,6 +9,8 @@
 #
 # Secrets (root password) are loaded from the sops file via the inventory.
 
+- import_playbook: register-nodes.yaml
+
 - name: Bootstrap Proxmox nodes
   hosts: proxmox_bootstrap
   gather_facts: false

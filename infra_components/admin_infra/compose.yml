@@ -32,8 +32,11 @@ services:
       - NODE_PREFIX=${PXE_HTTP_NODE_PREFIX:?run via 'just setup-pxe-infra'}
       - ADMIN_HOST=${PXE_HTTP_ADMIN_HOST:?run via 'just setup-pxe-infra'}
       - STATE_FILE=${PXE_HTTP_STATE_FILE:?run via 'just setup-pxe-infra'}
+      - REGISTRY_FILE=/registry/nodes.json
     volumes:
       - ./http-files:/srv:ro
       - ./http-files/proxmox-answers:/answers:ro
       - ./http-data:/data
+      # Shared node name → IP registry, read by terraform and ansible
+      - ../../nodes.json:/registry/nodes.json
     restart: unless-stopped
