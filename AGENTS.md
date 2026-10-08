@@ -45,18 +45,23 @@ The goals are :
 - The secrets are sourced at runtime by the different techs / the command running them
 
 ## Additional documentation
-Here are additional documentations, read them as needed depending on the task.
+Here are additional documentations, read them as needed depending on the task: 
+- Architecture of the project : ./docs/architecture.md
+- Infra as code (The decisions and tools related to describing the projects infra) :  ./docs/iac.md
+- Network (The network architecture and details of the project) : ./docs/network.md
+- Config (How project wide config options and secrets are handled) : ./docs/config.md
+- Know bugs we have to fix : ./docs/bugs.md
+- Roadmap of features and evolutions to implement : ./docs/roadmap.md
 
 ## Gotchas (by design — expect them)
 
 - All Proxmox connectivity is TLS-off / token auth: `insecure = true` (terraform) and `validate_certs: false` (ansible) everywhere. Don't "fix" this.
 - Provider pins: `bpg/proxmox` 0.104.0 and `carlpett/sops` 1.4.1 in both `main.tf` files.
 - Required ansible collections (no `ansible.cfg`): `community.proxmox`, `community.sops`, `community.general`, `ansible.posix`. Installed via `~/.ansible/collections`.
-- TF state/plan files are gitignored; `vms/terraform` and `layer1/terraform` have **separate** states.
+- TF state/plan files are gitignored 
 - Some terraform module `source` paths are hardcoded absolute `~/Repos/homelab/terraform_modules/...`, others relative — the absolute ones bind to the repo author's home dir.
 - Dynamic inventory derives `ansible_host` from `proxmox_agent_interfaces[1]` — assumes a specific NIC order on guests.
 - Molecule (`just molecule-test`) uses the custom `molecule-proxmox` driver (flake input from `github:NovaWasTakenn/molecule-proxmox`) and requires a **live Proxmox node** with a freshly-clonable VM template (`MOLECULE_PROXMOX_TEMPLATE=template.vm.pve`). It cannot run offline.
 - `sops exec-env` exports secrets under the raw key names from `secrets.enc.yaml` (e.g. `proxmox_root_password`), not the `*_ROOT_PASSWORD` style names — cross-check env names before relying on them.
 - PVE template/VM naming is significant: `MOLECULE_PROXMOX_TEMPLATE`, template ids, and the `ubuntu`/`basic_vm` tag conventions drive the dynamic inventory groups.
 
-Transient syntax issues and env wiring bugs (likely to be fixed soon) are tracked in `docs/syntax-bugs.md`.

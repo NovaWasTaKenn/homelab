@@ -9,7 +9,7 @@ This document tracks the remaining work to bring the homelab to a fully automate
 IMPORTANT : setup  gitlfs for pxe boot files
 
 - Review usage of templates for proxmox vms and move away from it (terraform)
-- Fix assignment of vm / container to a node. Right now target_node needs to be manually specified / reassigned if the node changes name
+- VM/container placement: replace the simple capacity ranking with bin-packing by requested resources (see `vm-placement` module)
 
 3. **Fix syntax issues caused by the refactor**
    - See `docs/syntax-bugs.md` for the current list
@@ -24,6 +24,8 @@ IMPORTANT : setup  gitlfs for pxe boot files
    - Tear down the existing infrastructure
    - Run the complete PXE → bootstrap → Terraform → Ansible flow end-to-end
    - Validate that every service comes back correctly
+
+- Reconsider playbook that dynamically gets nodes -> Maybe work making a dynamic inventory script
 
 6. **Kubernetes layer**
    - Choose and deploy a GitOps operator (Flux or ArgoCD)

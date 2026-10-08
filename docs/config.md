@@ -27,6 +27,19 @@ When using direnv, the flake loads automatically upon entering the project direc
 
 ---
 
+## Node Registry
+
+`nodes.json` at the repository root is the source of truth for the cluster nodes' name → IP mapping. It is **written by the PXE infra** (each node records its IP when it fetches its installer answer file) and committed to git — do not edit it by hand.
+
+Consumers:
+
+- **Terraform** reads it in `main.tf` via `jsondecode(file("${var.project_path}/nodes.json"))` and derives `local.nodes` / `local.node_ips` from it.
+- **Ansible** loads it in `register-nodes.yaml`, which populates the `proxmox` / `proxmox_bootstrap` inventory groups with `add_host` before any other play runs.
+
+It is refreshed automatically on every node (re)install.
+
+---
+
 ## Secrets
 
 All secrets are stored in a single SOPS-encrypted file: `secrets.enc.yaml`. They are **never** written in plaintext anywhere in the repository.

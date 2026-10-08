@@ -23,9 +23,22 @@ Manages:
 - APT repositories (no-subscription, per node)
 - SDN / VXLAN zone and VNet (`vxlan-homelab`, `vnet-homelab`)
 - VMs and containers via reusable modules (see [Module Catalog](#module-catalog))
+- Automatic node placement of VMs and containers (`placement.tf`, see below)
 - Shared storage containers (e.g., iSCSI metadata container)
 
 State is local and gitignored. Plans and state files are stored in the same directory.
+
+Node names and IPs are not Terraform variables: they are read from the node registry (`nodes.json`, written by the PXE infra) into `local.nodes` / `local.node_ips`.
+
+#### Workload placement
+
+VMs and containers are declared as definition lists in `proxmox.tfvars` (`vm_definitions`, `ct_definitions`) and assigned a node automatically by the `vm-placement` module:
+
+- Nodes are ranked by descending capacity (`cpu_count` from the Proxmox API; runtime-fluctuating attributes are deliberately ignored to keep placement stable).
+- One-off workloads (default) land on the biggest node; `replicas = N` spreads N instances across nodes, biggest first.
+- `node = "<name>"` on a definition pins it, bypassing placement.
+
+The definition variables have no defaults: run Terraform with `-var-file=proxmox.tfvars` (or the `tf-plan` / `tf-apply` just recipes) so a missing var-file fails loudly instead of planning an empty `for_each`.
 
 ### Ansible (`infra_components/proxmox/ansible/`)
 
@@ -43,7 +56,7 @@ Inventory groups:
 - `proxmox_bootstrap` — nodes that need the initial bootstrap (fresh install).
 - `proxmox` — all clustered nodes managed after bootstrap.
 
-Dynamic inventory (`homelab.proxmox.yml`) uses the `community.proxmox.proxmox` plugin to discover VMs and tag-based groups at runtime.
+`inventory.yaml` carries only group vars. Group membership comes from the node registry (`nodes.json`): `register-nodes.yaml` runs first in every playbook (via `import_playbook`) and registers each node with `add_host`.
 
 ---
 
@@ -76,6 +89,8 @@ Boot files (`boot.ipxe`) chain-load the Proxmox automated installer from the HTT
 
 `just update-pxe-iso` downloads the latest Proxmox VE ISO, prepares it with `proxmox-auto-install-assistant` (answer fetched from `http://$PXE_HTTP_ADMIN_HOST/answer`), installs the ISO + `vmlinuz` + `initrd.img` into `http-files/proxmox-img/`, and updates the ISO reference in `boot.ipxe`.
 
+When a node fetches its answer file, the HTTP server assigns its name (`<NODE_PREFIX>-<id>`, keyed on the first wired NIC's MAC, persisted in `http-data/nodes.json`) and records the node's name → IP mapping in the shared node registry (`nodes.json` at the repo root, bind-mounted into the container). That registry is the source of truth for Terraform and Ansible (see [config.md](config.md#node-registry)).
+
 ---
 
 ## Kubernetes
@@ -99,6 +114,7 @@ No code currently exists in these directories.
 | `download-vm` | Downloads a cloud image, creates a new VM from it, and applies cloud-init |
 | `download-container` | Downloads a rootfs tarball, creates a new LXC container, and applies network / user config |
 | `opnsense-vm` | Specialized wrapper around `template-vm` for deploying OPNsense with appropriate disk and network defaults |
+| `vm-placement` | Pure-logic module: expands workload definitions (replicas) and assigns each instance a node from a capacity-ranked list. Unit-tested via `terraform test` |
 
 ### Ansible Roles (`modules/ansible_roles/`)
 
