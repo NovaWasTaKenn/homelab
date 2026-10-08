@@ -1,4 +1,6 @@
 setup-pxe-infra: 
+  # nodes.json must exist on the host: it is bind-mounted into the pxe-http container
+  [ -f $PROJECT_PATH/nodes.json ] || printf '{\n  "nodes": {}\n}\n' > $PROJECT_PATH/nodes.json
   cd $PROJECT_PATH/infra_components/admin_infra && sops exec-env $PROJECT_PATH/secrets.enc.yaml 'sudo --preserve-env=proxmox_root_password,PXE_HTTP_PORT,PXE_HTTP_STATIC_DIR,PXE_HTTP_ANSWER_DIR,PXE_HTTP_NODE_PREFIX,PXE_HTTP_ADMIN_HOST,PXE_HTTP_STATE_FILE podman compose up -d'
 
 teardown-pxe-infra: 
@@ -55,4 +57,13 @@ update-pxe-iso:
 
   echo "PXE artifacts updated to Proxmox VE $VERSION"
 
-# Add ansible, terraform ; layer1 ... recipes
+# Terraform — proxmox layer. The -var-file is required: the workload
+# definition variables have no defaults so a missing var-file fails loudly
+# instead of planning an empty for_each (which would destroy every VM/CT).
+tf-plan:
+    cd $PROJECT_PATH/infra_components/proxmox/terraform && terraform plan -var-file=proxmox.tfvars
+
+tf-apply:
+    cd $PROJECT_PATH/infra_components/proxmox/terraform && terraform apply -var-file=proxmox.tfvars
+
+# Add ansible ; layer1 ... recipes
